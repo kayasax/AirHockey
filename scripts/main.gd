@@ -68,6 +68,9 @@ var sfx_goal      : AudioStreamPlayer
 var sfx_countdown : AudioStreamPlayer
 var sfx_game_over : AudioStreamPlayer
 var sfx_click     : AudioStreamPlayer
+var sfx_cheer     : AudioStreamPlayer
+var sfx_boo       : AudioStreamPlayer
+var sfx_perfect   : AudioStreamPlayer
 
 # Particles
 var puck_trail    : GPUParticles3D
@@ -1597,11 +1600,44 @@ func _hide_menu() -> void:
 
 func _show_game_over() -> void:
 	puck.freeze = true
-	game_over_panel.visible = true
-	_play_sfx(sfx_game_over)
+	var is_p1_winner := GameManager.score[0] >= GameManager.winning_score
+	var is_perfect := (is_p1_winner and GameManager.score[1] == 0) or (not is_p1_winner and GameManager.score[0] == 0)
+
+	# Choose sound: perfect victory fanfare or normal game over
+	if is_perfect:
+		_play_sfx(sfx_perfect)
+	else:
+		_play_sfx(sfx_game_over)
+		if is_p1_winner:
+			_play_sfx(sfx_cheer)
+		else:
+			_play_sfx(sfx_boo)
+
 	if winner_label:
-		var w := "Player 1" if GameManager.score[0] >= GameManager.winning_score else "Player 2"
-		winner_label.text = "%s Wins!" % w
+		var w := "Player 1" if is_p1_winner else "Player 2"
+		if is_perfect:
+			winner_label.text = "PERFECT!\n%s Wins!" % w
+			winner_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.0))
+		else:
+			winner_label.text = "%s Wins!" % w
+			winner_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+
+	# ── Animated entrance: scale from 0 + fade in ──
+	game_over_panel.visible = true
+	game_over_panel.modulate = Color(1, 1, 1, 0)
+	game_over_panel.scale = Vector2(0.3, 0.3)
+	game_over_panel.pivot_offset = game_over_panel.size / 2.0
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(game_over_panel, "modulate", Color(1, 1, 1, 1), 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(game_over_panel, "scale", Vector2(1.0, 1.0), 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+	# Extra flash for perfect game
+	if is_perfect:
+		var flash_tween := create_tween()
+		flash_tween.set_loops(3)
+		flash_tween.tween_property(winner_label, "modulate", Color(1.0, 0.2, 0.0, 1.0), 0.25)
+		flash_tween.tween_property(winner_label, "modulate", Color(1.0, 0.9, 0.3, 1.0), 0.25)
 
 
 func _hide_game_over() -> void:
@@ -1653,6 +1689,11 @@ func _on_goal_scored(scoring_player: int) -> void:
 	countdown_label.visible = true
 	countdown_label.text = str(ceili(RESET_DELAY))
 	_play_sfx(sfx_goal)
+	# Crowd reaction: cheer for player 1 scoring, boo when opponent scores
+	if scoring_player == 0:
+		_play_sfx(sfx_cheer)
+	else:
+		_play_sfx(sfx_boo)
 	# Fire goal celebration particles
 	var gp := goal_particles_p1 if scoring_player == 0 else goal_particles_p2
 	if gp:
@@ -1673,12 +1714,15 @@ func _on_game_state_changed(state: GameManager.GameState) -> void:
 # ╚══════════════════════════════════════════════════════════════╝
 
 func _build_sounds() -> void:
-	sfx_hit = _make_player(SoundGen.make_hit_sound(800.0, 0.08))
+	sfx_hit = _make_player(SoundGen.make_hit_sound())
 	sfx_wall = _make_player(SoundGen.make_wall_bounce_sound())
 	sfx_goal = _make_player(SoundGen.make_goal_sound())
 	sfx_countdown = _make_player(SoundGen.make_countdown_beep(false))
 	sfx_game_over = _make_player(SoundGen.make_game_over_sound())
 	sfx_click = _make_player(SoundGen.make_menu_click_sound())
+	sfx_cheer = _make_player(SoundGen.make_crowd_cheer_sound())
+	sfx_boo = _make_player(SoundGen.make_crowd_boo_sound())
+	sfx_perfect = _make_player(SoundGen.make_perfect_victory_sound())
 
 
 func _make_player(stream: AudioStream) -> AudioStreamPlayer:
