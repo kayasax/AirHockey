@@ -55,18 +55,33 @@
 - AI: base_speed=2.8, max_speed=5.5, reaction_time=0.18s
 
 **Visual Setup:**
-- Table surface: dark teal (0, 0.12, 0.28), glossy (roughness=0.25)
-- Rails: chrome (metallic=0.9, roughness=0.12)
-- Puck: dark with orange emission glow (energy=1.8)
-- Paddles: red/blue metallic with chrome ring detail
-- Markings: white with subtle blue emission
-- Lighting: directional + overhead spot + fill spot, ACES tonemapping, glow+SSAO+SSR
+- **Tron Neon Aesthetic** — dark sci-fi look with glowing neon accents
+- Surface: near-black with procedural cellular noise normal map (ice-rink texture relief)
+- Rails: cyan neon emission (1.8x) with ridged brushed-metal normal map
+- Puck: hot orange neon (2.5x), beveled profile, glowing core inlay disc, neon edge ring, surface normal map
+- Paddles: red/cyan neon (2.0x), chamfered base, neon glow ring, detailed knob, glowing top cap, cellular grip normal map
+- Markings: cyan unshaded emission, center circle + center line + Tron grid
+- Goal inserts: recessed orange neon strips in rails + floor
+- 3D depth: recessed surface, raised outer lip, bevel step, rail caps, under-table neon glow (desktop)
+- Lighting: dim key + cyan spot + fill + rim (reduced on web)
+- Glow, contrast 1.15, saturation 1.3
+
+**Sound Design:**
+- Procedural WAV synthesis, 44100 Hz stereo, 16-bit
+- Multi-harmonic waveforms (sine + sawtooth + square), detuned harmonics for shimmer
+- Comb filter reverb (dual taps) on hit, wall, goal, and game_over sounds
+- Hit: sharp metallic impact (800Hz base, 4 harmonics, click transient, reverb)
+- Wall bounce: pitch-dropping thud (200→80Hz) + crack + noise burst
+- Goal: triumphant rising fanfare (523→1760Hz) + sub bass drop + shimmer
+- Countdown: clean digital beep with 5ms attack, perfect fifth + octave
+- Game over: major 7th chord (C-E-G-B) with octave doubling + sparkle shimmer + reverb
+- Menu click: snappy two-tone pop (1200+1800Hz)
 
 **Known Constraints:**
-- Godot 4 must be installed before project can be run/tested
-- No audio yet — sound effects are a future enhancement
-- No particle effects yet — puck trail, goal celebrations planned
-- AI wall-bounce prediction is simplified (may have edge cases)
+- Web export: SharedArrayBuffer headers needed → use itch.io or Cloudflare Pages
+- Web runtime: conditional quality reduction (_is_web flag) for MSAA, shadows, particles, etc.
+- Godot 4.6 API gaps: NO TONE_MAP_ACES/FILMIC/LINEAR, NO glow_bloom, NO ssao_enabled/ssr_enabled, NO TorusMesh.sections
+- Use absf()/absi() instead of abs() on typed floats/ints
 
 ---
 
@@ -82,6 +97,10 @@
 | 2026-02-22 | ✅ Implemented AI opponent with prediction and difficulty scaling |
 | 2026-02-22 | ✅ Built complete UI (main menu, score HUD, game over, countdown) |
 | 2026-02-22 | ✅ Tron neon aesthetic: neon edge lines, grid surface, orange trail, boosted goal burst |
+| 2026-02-22 | ✅ Procedural textures & normal maps: ice-rink surface, brushed-metal rails, grip paddles |
+| 2026-02-22 | ✅ Upgraded puck geometry: beveled profile, glowing core inlay, neon edge ring |
+| 2026-02-22 | ✅ Upgraded paddle geometry: chamfered base, neon glow ring, detailed knob, glowing cap |
+| 2026-02-22 | ✅ Sound overhaul: 44100Hz stereo, multi-harmonic synthesis, sawtooth/square, comb reverb |
 
 ---
 

@@ -435,9 +435,23 @@ func _unhandled_input(event: InputEvent) -> void:
 # ╚══════════════════════════════════════════════════════════════╝
 
 func _create_materials() -> void:
-	# === TRON NEON STYLE ===
+	# === TRON NEON STYLE WITH PROCEDURAL TEXTURES ===
 
-	# Near-black playing surface with subtle cyan grid glow
+	# ── Procedural normal map for playing surface (ice-rink micro-texture) ──
+	var surface_noise := FastNoiseLite.new()
+	surface_noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	surface_noise.frequency = 0.08
+	surface_noise.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
+	surface_noise.cellular_return_type = FastNoiseLite.RETURN_DISTANCE
+	var surface_normal_tex := NoiseTexture2D.new()
+	surface_normal_tex.width = 256
+	surface_normal_tex.height = 256
+	surface_normal_tex.noise = surface_noise
+	surface_normal_tex.as_normal_map = true
+	surface_normal_tex.bump_strength = 3.0
+	surface_normal_tex.seamless = true
+
+	# Near-black playing surface with micro-texture relief
 	mat_surface = StandardMaterial3D.new()
 	mat_surface.albedo_color = Color(0.01, 0.01, 0.03)
 	mat_surface.metallic     = 0.6
@@ -445,13 +459,31 @@ func _create_materials() -> void:
 	mat_surface.emission_enabled = true
 	mat_surface.emission         = Color(0.0, 0.06, 0.12)
 	mat_surface.emission_energy_multiplier = 0.4
+	mat_surface.normal_enabled = true
+	mat_surface.normal_texture = surface_normal_tex
+	mat_surface.normal_scale = 0.4
+	mat_surface.uv1_scale = Vector3(4, 4, 1)
 
 	# Pure black base
 	mat_base = StandardMaterial3D.new()
 	mat_base.albedo_color = Color(0.02, 0.02, 0.02)
 	mat_base.roughness    = 0.9
 
-	# Neon cyan glowing rails
+	# ── Procedural brushed-metal normal for rails ──
+	var rail_noise := FastNoiseLite.new()
+	rail_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	rail_noise.frequency = 0.15
+	rail_noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+	rail_noise.fractal_octaves = 3
+	var rail_normal_tex := NoiseTexture2D.new()
+	rail_normal_tex.width = 128
+	rail_normal_tex.height = 128
+	rail_normal_tex.noise = rail_noise
+	rail_normal_tex.as_normal_map = true
+	rail_normal_tex.bump_strength = 4.0
+	rail_normal_tex.seamless = true
+
+	# Neon cyan glowing rails with brushed-metal relief
 	mat_rail = StandardMaterial3D.new()
 	mat_rail.albedo_color = Color(0.05, 0.15, 0.2)
 	mat_rail.metallic     = 0.9
@@ -459,8 +491,25 @@ func _create_materials() -> void:
 	mat_rail.emission_enabled = true
 	mat_rail.emission         = Color(0.0, 0.8, 1.0)
 	mat_rail.emission_energy_multiplier = 1.8
+	mat_rail.normal_enabled = true
+	mat_rail.normal_texture = rail_normal_tex
+	mat_rail.normal_scale = 0.5
+	mat_rail.uv1_scale = Vector3(6, 2, 1)
 
-	# Hot orange neon puck
+	# ── Procedural rough texture for puck ──
+	var puck_noise := FastNoiseLite.new()
+	puck_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	puck_noise.frequency = 0.12
+	puck_noise.fractal_octaves = 4
+	var puck_normal_tex := NoiseTexture2D.new()
+	puck_normal_tex.width = 128
+	puck_normal_tex.height = 128
+	puck_normal_tex.noise = puck_noise
+	puck_normal_tex.as_normal_map = true
+	puck_normal_tex.bump_strength = 5.0
+	puck_normal_tex.seamless = true
+
+	# Hot orange neon puck with textured surface
 	mat_puck = StandardMaterial3D.new()
 	mat_puck.albedo_color = Color(1.0, 0.3, 0.0)
 	mat_puck.metallic     = 0.4
@@ -468,8 +517,24 @@ func _create_materials() -> void:
 	mat_puck.emission_enabled = true
 	mat_puck.emission         = Color(1.0, 0.4, 0.05)
 	mat_puck.emission_energy_multiplier = 2.5
+	mat_puck.normal_enabled = true
+	mat_puck.normal_texture = puck_normal_tex
+	mat_puck.normal_scale = 0.6
 
-	# Neon red paddle — player 1
+	# ── Procedural grip texture for paddles ──
+	var paddle_noise := FastNoiseLite.new()
+	paddle_noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	paddle_noise.frequency = 0.2
+	paddle_noise.cellular_return_type = FastNoiseLite.RETURN_CELL_VALUE
+	var paddle_normal_tex := NoiseTexture2D.new()
+	paddle_normal_tex.width = 128
+	paddle_normal_tex.height = 128
+	paddle_normal_tex.noise = paddle_noise
+	paddle_normal_tex.as_normal_map = true
+	paddle_normal_tex.bump_strength = 3.0
+	paddle_normal_tex.seamless = true
+
+	# Neon red paddle — player 1 (with grip texture)
 	mat_paddle_r = StandardMaterial3D.new()
 	mat_paddle_r.albedo_color = Color(0.15, 0.02, 0.02)
 	mat_paddle_r.metallic     = 0.6
@@ -477,8 +542,11 @@ func _create_materials() -> void:
 	mat_paddle_r.emission_enabled = true
 	mat_paddle_r.emission         = Color(1.0, 0.1, 0.05)
 	mat_paddle_r.emission_energy_multiplier = 2.0
+	mat_paddle_r.normal_enabled = true
+	mat_paddle_r.normal_texture = paddle_normal_tex
+	mat_paddle_r.normal_scale = 0.5
 
-	# Neon cyan paddle — player 2 / AI
+	# Neon cyan paddle — player 2 / AI (with grip texture)
 	mat_paddle_b = StandardMaterial3D.new()
 	mat_paddle_b.albedo_color = Color(0.02, 0.05, 0.15)
 	mat_paddle_b.metallic     = 0.6
@@ -486,6 +554,9 @@ func _create_materials() -> void:
 	mat_paddle_b.emission_enabled = true
 	mat_paddle_b.emission         = Color(0.0, 0.7, 1.0)
 	mat_paddle_b.emission_energy_multiplier = 2.0
+	mat_paddle_b.normal_enabled = true
+	mat_paddle_b.normal_texture = paddle_normal_tex
+	mat_paddle_b.normal_scale = 0.5
 
 	# Neon cyan markings (bright unshaded lines)
 	mat_marking = StandardMaterial3D.new()
@@ -1025,15 +1096,62 @@ func _build_puck() -> void:
 	col.shape = shape
 	puck.add_child(col)
 
+	# ── Main body with slightly beveled profile ──
 	var mesh_inst := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius    = PUCK_RADIUS
+	cyl.top_radius    = PUCK_RADIUS - 0.003
 	cyl.bottom_radius = PUCK_RADIUS
 	cyl.height        = PUCK_HEIGHT
-	cyl.radial_segments = 32
+	cyl.radial_segments = 48
 	mesh_inst.mesh = cyl
 	mesh_inst.material_override = mat_puck
 	puck.add_child(mesh_inst)
+
+	# ── Glowing core inlay disc on top ──
+	var inlay_mat := StandardMaterial3D.new()
+	inlay_mat.albedo_color = Color(1.0, 0.6, 0.1)
+	inlay_mat.emission_enabled = true
+	inlay_mat.emission = Color(1.0, 0.5, 0.0)
+	inlay_mat.emission_energy_multiplier = 4.0
+	inlay_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var inlay_mesh := CylinderMesh.new()
+	inlay_mesh.top_radius    = PUCK_RADIUS * 0.55
+	inlay_mesh.bottom_radius = PUCK_RADIUS * 0.55
+	inlay_mesh.height        = 0.002
+	inlay_mesh.radial_segments = 48
+	var inlay_inst := MeshInstance3D.new()
+	inlay_inst.mesh = inlay_mesh
+	inlay_inst.material_override = inlay_mat
+	inlay_inst.position.y = PUCK_HEIGHT / 2.0 + 0.001
+	puck.add_child(inlay_inst)
+
+	# ── Bright edge ring (neon accent around perimeter) ──
+	var edge_ring := TorusMesh.new()
+	edge_ring.inner_radius  = PUCK_RADIUS - 0.006
+	edge_ring.outer_radius  = PUCK_RADIUS + 0.001
+	edge_ring.ring_segments = 48
+	var edge_mat := StandardMaterial3D.new()
+	edge_mat.albedo_color = Color(1.0, 0.2, 0.0)
+	edge_mat.emission_enabled = true
+	edge_mat.emission = Color(1.0, 0.3, 0.0)
+	edge_mat.emission_energy_multiplier = 3.5
+	var edge_inst := MeshInstance3D.new()
+	edge_inst.mesh = edge_ring
+	edge_inst.material_override = edge_mat
+	edge_inst.scale = Vector3(1, 0.2, 1)
+	puck.add_child(edge_inst)
+
+	# ── Bottom bevel ring ──
+	var bevel_mesh := CylinderMesh.new()
+	bevel_mesh.top_radius    = PUCK_RADIUS
+	bevel_mesh.bottom_radius = PUCK_RADIUS - 0.005
+	bevel_mesh.height        = 0.005
+	bevel_mesh.radial_segments = 48
+	var bevel_inst := MeshInstance3D.new()
+	bevel_inst.mesh = bevel_mesh
+	bevel_inst.material_override = mat_puck
+	bevel_inst.position.y = -PUCK_HEIGHT / 2.0 + 0.0025
+	puck.add_child(bevel_inst)
 
 	puck.set_script(load("res://scripts/puck.gd"))
 	add_child(puck)
@@ -1078,41 +1196,78 @@ func _create_paddle_visual(n: String, mat: StandardMaterial3D) -> Node3D:
 	var root := Node3D.new()
 	root.name = n
 
-	# Main body
+	# ── Chamfered base (wide bottom tapers slightly) ──
 	var base_mesh := CylinderMesh.new()
-	base_mesh.top_radius    = PADDLE_RADIUS
+	base_mesh.top_radius    = PADDLE_RADIUS - 0.003
 	base_mesh.bottom_radius = PADDLE_RADIUS
-	base_mesh.height        = PADDLE_HEIGHT * 0.5
-	base_mesh.radial_segments = 32
+	base_mesh.height        = PADDLE_HEIGHT * 0.45
+	base_mesh.radial_segments = 48
 	var base_inst := MeshInstance3D.new()
 	base_inst.mesh = base_mesh
 	base_inst.material_override = mat
 	base_inst.position.y = -PADDLE_HEIGHT * 0.15
 	root.add_child(base_inst)
 
-	# Handle knob
+	# ── Neon accent ring at base edge (bright glow strip) ──
+	var glow_ring := TorusMesh.new()
+	glow_ring.inner_radius  = PADDLE_RADIUS - 0.005
+	glow_ring.outer_radius  = PADDLE_RADIUS + 0.003
+	glow_ring.ring_segments = 48
+	var glow_mat := StandardMaterial3D.new()
+	glow_mat.albedo_color = mat.emission
+	glow_mat.emission_enabled = true
+	glow_mat.emission = mat.emission
+	glow_mat.emission_energy_multiplier = 3.5
+	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var glow_inst := MeshInstance3D.new()
+	glow_inst.mesh = glow_ring
+	glow_inst.material_override = glow_mat
+	glow_inst.position.y = -PADDLE_HEIGHT * 0.35
+	glow_inst.scale = Vector3(1, 0.2, 1)
+	root.add_child(glow_inst)
+
+	# ── Handle knob with grip ridges ──
 	var knob_mesh := CylinderMesh.new()
-	knob_mesh.top_radius    = PADDLE_RADIUS * 0.45
-	knob_mesh.bottom_radius = PADDLE_RADIUS * 0.6
-	knob_mesh.height        = PADDLE_HEIGHT * 0.6
-	knob_mesh.radial_segments = 24
+	knob_mesh.top_radius    = PADDLE_RADIUS * 0.4
+	knob_mesh.bottom_radius = PADDLE_RADIUS * 0.65
+	knob_mesh.height        = PADDLE_HEIGHT * 0.65
+	knob_mesh.radial_segments = 48
 	var knob_inst := MeshInstance3D.new()
 	knob_inst.mesh = knob_mesh
 	knob_inst.material_override = mat
 	knob_inst.position.y = PADDLE_HEIGHT * 0.15
 	root.add_child(knob_inst)
 
-	# Subtle edge ring (same color as paddle, thin accent)
-	var ring := TorusMesh.new()
-	ring.inner_radius  = PADDLE_RADIUS - 0.005
-	ring.outer_radius  = PADDLE_RADIUS + 0.002
-	ring.ring_segments = 32
-	var ring_inst := MeshInstance3D.new()
-	ring_inst.mesh = ring
-	ring_inst.material_override = mat
-	ring_inst.position.y = -PADDLE_HEIGHT * 0.1
-	ring_inst.scale = Vector3(1, 0.15, 1)
-	root.add_child(ring_inst)
+	# ── Top cap (small glowing dome) ──
+	var cap_mesh := CylinderMesh.new()
+	cap_mesh.top_radius    = PADDLE_RADIUS * 0.15
+	cap_mesh.bottom_radius = PADDLE_RADIUS * 0.38
+	cap_mesh.height        = PADDLE_HEIGHT * 0.15
+	cap_mesh.radial_segments = 32
+	var cap_mat := StandardMaterial3D.new()
+	cap_mat.albedo_color = mat.emission
+	cap_mat.emission_enabled = true
+	cap_mat.emission = mat.emission
+	cap_mat.emission_energy_multiplier = 3.0
+	cap_mat.metallic = 0.8
+	cap_mat.roughness = 0.05
+	var cap_inst := MeshInstance3D.new()
+	cap_inst.mesh = cap_mesh
+	cap_inst.material_override = cap_mat
+	cap_inst.position.y = PADDLE_HEIGHT * 0.5
+	root.add_child(cap_inst)
+
+	# ── Middle accent ring (separates body from knob) ──
+	var mid_ring := TorusMesh.new()
+	mid_ring.inner_radius  = PADDLE_RADIUS * 0.6
+	mid_ring.outer_radius  = PADDLE_RADIUS * 0.68
+	mid_ring.ring_segments = 32
+	var mid_inst := MeshInstance3D.new()
+	mid_inst.mesh = mid_ring
+	mid_inst.material_override = glow_mat
+	mid_inst.position.y = -PADDLE_HEIGHT * 0.02
+	mid_inst.scale = Vector3(1, 0.15, 1)
+	root.add_child(mid_inst)
 
 	return root
 
