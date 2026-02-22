@@ -92,12 +92,16 @@ var _ai_home_pos       : Vector3
 var _paddle1_prev_pos  : Vector3
 var _paddle2_prev_pos  : Vector3
 
+# Platform detection
+var _is_web : bool = false
+
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  LIFECYCLE                                                     ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 func _ready() -> void:
+	_is_web = OS.get_name() == "Web"
 	_half_w  = TABLE_WIDTH  / 2.0
 	_half_l  = TABLE_LENGTH / 2.0
 	_inner_w = _half_w - RAIL_THICK
@@ -517,12 +521,18 @@ func _setup_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color  = Color(0.03, 0.06, 0.1)
 	env.ambient_light_energy = 0.3
-	# Strong glow for neon bloom
+	# Glow for neon bloom (reduced on web for performance)
 	env.glow_enabled         = true
-	env.glow_intensity       = 1.2
-	env.glow_strength        = 1.0
-	env.glow_hdr_threshold   = 0.8
-	env.glow_hdr_scale       = 2.0
+	if _is_web:
+		env.glow_intensity       = 0.8
+		env.glow_strength        = 0.6
+		env.glow_hdr_threshold   = 1.2
+		env.glow_hdr_scale       = 1.0
+	else:
+		env.glow_intensity       = 1.2
+		env.glow_strength        = 1.0
+		env.glow_hdr_threshold   = 0.8
+		env.glow_hdr_scale       = 2.0
 	env.glow_blend_mode      = Environment.GLOW_BLEND_MODE_ADDITIVE
 	env.adjustment_enabled   = true
 	env.adjustment_contrast  = 1.15
@@ -531,10 +541,14 @@ func _setup_environment() -> void:
 	world_env.environment = env
 	add_child(world_env)
 
-	# Set viewport quality at runtime
+	# Set viewport quality at runtime (lighter on web)
 	var vp := get_viewport()
-	vp.msaa_3d = Viewport.MSAA_4X
-	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	if _is_web:
+		vp.msaa_3d = Viewport.MSAA_2X
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	else:
+		vp.msaa_3d = Viewport.MSAA_4X
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 
 
 func _setup_camera() -> void:
@@ -552,7 +566,7 @@ func _setup_lighting() -> void:
 	dir_light.rotation_degrees   = Vector3(-65, 25, 0)
 	dir_light.light_energy       = 0.3
 	dir_light.light_color        = Color(0.4, 0.6, 0.8)
-	dir_light.shadow_enabled     = true
+	dir_light.shadow_enabled     = not _is_web  # shadows off on web
 	add_child(dir_light)
 
 	# Main overhead spot — cyan tinted
@@ -563,28 +577,29 @@ func _setup_lighting() -> void:
 	spot.spot_angle        = 45.0
 	spot.light_energy      = 1.0
 	spot.light_color       = Color(0.3, 0.7, 1.0)
-	spot.shadow_enabled    = true
+	spot.shadow_enabled    = not _is_web  # shadows off on web
 	add_child(spot)
 
-	# Fill light from player side — warm orange
-	var fill := SpotLight3D.new()
-	fill.position          = Vector3(0, 3.0, 3.5)
-	fill.rotation_degrees  = Vector3(-50, 0, 0)
-	fill.spot_range        = 7.0
-	fill.spot_angle        = 50.0
-	fill.light_energy      = 0.5
-	fill.light_color       = Color(1.0, 0.5, 0.2)
-	add_child(fill)
+	if not _is_web:
+		# Fill light from player side — warm orange (skip on web)
+		var fill := SpotLight3D.new()
+		fill.position          = Vector3(0, 3.0, 3.5)
+		fill.rotation_degrees  = Vector3(-50, 0, 0)
+		fill.spot_range        = 7.0
+		fill.spot_angle        = 50.0
+		fill.light_energy      = 0.5
+		fill.light_color       = Color(1.0, 0.5, 0.2)
+		add_child(fill)
 
-	# Rim light from AI side — deep cyan
-	var rim := SpotLight3D.new()
-	rim.position          = Vector3(0, 3.0, -3.5)
-	rim.rotation_degrees  = Vector3(-130, 0, 0)
-	rim.spot_range        = 7.0
-	rim.spot_angle        = 50.0
-	rim.light_energy      = 0.5
-	rim.light_color       = Color(0.0, 0.6, 1.0)
-	add_child(rim)
+		# Rim light from AI side — deep cyan (skip on web)
+		var rim := SpotLight3D.new()
+		rim.position          = Vector3(0, 3.0, -3.5)
+		rim.rotation_degrees  = Vector3(-130, 0, 0)
+		rim.spot_range        = 7.0
+		rim.spot_angle        = 50.0
+		rim.light_energy      = 0.5
+		rim.light_color       = Color(0.0, 0.6, 1.0)
+		add_child(rim)
 
 
 # ╔══════════════════════════════════════════════════════════════╗
@@ -633,32 +648,31 @@ func _build_table() -> void:
 		el_inst.position = Vector3(0, -lip_h / 2.0, z_sign * (_half_l - RAIL_THICK / 2.0))
 		table_root.add_child(el_inst)
 
-	# ── Under-table neon glow strip (visible depth lighting) ──
-	var underglow_mat := StandardMaterial3D.new()
-	underglow_mat.albedo_color = Color(0.0, 0.6, 0.8, 0.6)
-	underglow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	underglow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	underglow_mat.emission_enabled = true
-	underglow_mat.emission = Color(0.0, 0.6, 1.0)
-	underglow_mat.emission_energy_multiplier = 2.0
-	# Glow strip under each side
-	for x_sign in [-1.0, 1.0]:
-		var ug_mesh := BoxMesh.new()
-		ug_mesh.size = Vector3(0.02, 0.02, TABLE_LENGTH - 0.2)
-		var ug_inst := MeshInstance3D.new()
-		ug_inst.mesh = ug_mesh
-		ug_inst.material_override = underglow_mat
-		ug_inst.position = Vector3(x_sign * (_half_w + 0.01), -SURFACE_THICK - 0.02, 0)
-		table_root.add_child(ug_inst)
-	# Glow strip under each end
-	for z_sign in [-1.0, 1.0]:
-		var ug_mesh := BoxMesh.new()
-		ug_mesh.size = Vector3(TABLE_WIDTH - 0.2, 0.02, 0.02)
-		var ug_inst := MeshInstance3D.new()
-		ug_inst.mesh = ug_mesh
-		ug_inst.material_override = underglow_mat
-		ug_inst.position = Vector3(0, -SURFACE_THICK - 0.02, z_sign * (_half_l + 0.01))
-		table_root.add_child(ug_inst)
+	# ── Under-table neon glow strip (desktop only — skip on web) ──
+	if not _is_web:
+		var underglow_mat := StandardMaterial3D.new()
+		underglow_mat.albedo_color = Color(0.0, 0.6, 0.8, 0.6)
+		underglow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		underglow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		underglow_mat.emission_enabled = true
+		underglow_mat.emission = Color(0.0, 0.6, 1.0)
+		underglow_mat.emission_energy_multiplier = 2.0
+		for x_sign in [-1.0, 1.0]:
+			var ug_mesh := BoxMesh.new()
+			ug_mesh.size = Vector3(0.02, 0.02, TABLE_LENGTH - 0.2)
+			var ug_inst := MeshInstance3D.new()
+			ug_inst.mesh = ug_mesh
+			ug_inst.material_override = underglow_mat
+			ug_inst.position = Vector3(x_sign * (_half_w + 0.01), -SURFACE_THICK - 0.02, 0)
+			table_root.add_child(ug_inst)
+		for z_sign in [-1.0, 1.0]:
+			var ug_mesh := BoxMesh.new()
+			ug_mesh.size = Vector3(TABLE_WIDTH - 0.2, 0.02, 0.02)
+			var ug_inst := MeshInstance3D.new()
+			ug_inst.mesh = ug_mesh
+			ug_inst.material_override = underglow_mat
+			ug_inst.position = Vector3(0, -SURFACE_THICK - 0.02, z_sign * (_half_l + 0.01))
+			table_root.add_child(ug_inst)
 
 	# Base / legs (with beveled inset for depth)
 	var base_mesh := BoxMesh.new()
@@ -752,7 +766,7 @@ func _build_markings() -> void:
 
 	var play_w := TABLE_WIDTH - RAIL_THICK * 2
 	var play_l := TABLE_LENGTH - RAIL_THICK * 2
-	var grid_spacing := 0.3
+	var grid_spacing := 0.6 if _is_web else 0.3  # fewer grid lines on web
 	var grid_thick := 0.004
 	var grid_y := 0.001
 
@@ -918,36 +932,34 @@ func _add_wall(parent: Node3D, size: Vector3, pos: Vector3) -> void:
 	mesh_inst.material_override = mat_rail
 	body.add_child(mesh_inst)
 
-	# Beveled cap on top of rail (rounded look)
-	var cap_mesh := BoxMesh.new()
-	cap_mesh.size = Vector3(size.x + 0.01, 0.012, size.z + 0.01)
-	var cap_inst := MeshInstance3D.new()
-	cap_inst.mesh = cap_mesh
-	cap_inst.material_override = mat_rail
-	cap_inst.position = Vector3(0, size.y / 2.0 + 0.006, 0)
-	body.add_child(cap_inst)
+	# Beveled cap + groove details (skip on web for performance)
+	if not _is_web:
+		var cap_mesh := BoxMesh.new()
+		cap_mesh.size = Vector3(size.x + 0.01, 0.012, size.z + 0.01)
+		var cap_inst := MeshInstance3D.new()
+		cap_inst.mesh = cap_mesh
+		cap_inst.material_override = mat_rail
+		cap_inst.position = Vector3(0, size.y / 2.0 + 0.006, 0)
+		body.add_child(cap_inst)
 
-	# Inner groove line (dark inset along the rail face)
-	var groove_mat := StandardMaterial3D.new()
-	groove_mat.albedo_color = Color(0.005, 0.005, 0.01)
-	groove_mat.roughness = 0.9
-	var groove_h := size.y * 0.3
-	# Only add groove on rails wide enough
-	if size.x > 0.05 or size.z > 0.05:
-		var groove_mesh := BoxMesh.new()
-		if size.x > size.z:  # horizontal rail
-			groove_mesh.size = Vector3(size.x - 0.02, groove_h, 0.005)
-		else:  # vertical (side) rail
-			groove_mesh.size = Vector3(0.005, groove_h, size.z - 0.02)
-		var groove_inst := MeshInstance3D.new()
-		groove_inst.mesh = groove_mesh
-		groove_inst.material_override = groove_mat
-		# On the inner face
-		if size.x > size.z:
-			groove_inst.position = Vector3(0, 0, -size.z / 2.0 - 0.001 if pos.z > 0 else size.z / 2.0 + 0.001)
-		else:
-			groove_inst.position = Vector3(-size.x / 2.0 - 0.001 if pos.x > 0 else size.x / 2.0 + 0.001, 0, 0)
-		body.add_child(groove_inst)
+		var groove_mat := StandardMaterial3D.new()
+		groove_mat.albedo_color = Color(0.005, 0.005, 0.01)
+		groove_mat.roughness = 0.9
+		var groove_h := size.y * 0.3
+		if size.x > 0.05 or size.z > 0.05:
+			var groove_mesh := BoxMesh.new()
+			if size.x > size.z:
+				groove_mesh.size = Vector3(size.x - 0.02, groove_h, 0.005)
+			else:
+				groove_mesh.size = Vector3(0.005, groove_h, size.z - 0.02)
+			var groove_inst := MeshInstance3D.new()
+			groove_inst.mesh = groove_mesh
+			groove_inst.material_override = groove_mat
+			if size.x > size.z:
+				groove_inst.position = Vector3(0, 0, -size.z / 2.0 - 0.001 if pos.z > 0 else size.z / 2.0 + 0.001)
+			else:
+				groove_inst.position = Vector3(-size.x / 2.0 - 0.001 if pos.x > 0 else size.x / 2.0 + 0.001, 0, 0)
+			body.add_child(groove_inst)
 	body.add_child(mesh_inst)
 	parent.add_child(body)
 
@@ -1550,7 +1562,7 @@ func _create_goal_burst(pos: Vector3, color: Color) -> GPUParticles3D:
 	particles.position = pos
 	particles.emitting = false
 	particles.one_shot = true
-	particles.amount = 40
+	particles.amount = 16 if _is_web else 40
 	particles.lifetime = 0.8
 	particles.explosiveness = 0.95
 	particles.visibility_aabb = AABB(Vector3(-2, -1, -2), Vector3(4, 3, 4))
@@ -1600,8 +1612,8 @@ func _create_goal_burst(pos: Vector3, color: Color) -> GPUParticles3D:
 func _build_puck_trail() -> void:
 	puck_trail = GPUParticles3D.new()
 	puck_trail.emitting = false
-	puck_trail.amount = 40
-	puck_trail.lifetime = 0.45
+	puck_trail.amount = 16 if _is_web else 40
+	puck_trail.lifetime = 0.3 if _is_web else 0.45
 	puck_trail.amount_ratio = 0.0
 	puck_trail.visibility_aabb = AABB(Vector3(-3, -1, -3), Vector3(6, 2, 6))
 
